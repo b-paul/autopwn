@@ -1,4 +1,4 @@
-from pwn import ELF
+import cle
 
 class Goal():
     """
@@ -18,10 +18,12 @@ def find_goals(bin_path: str) -> list[Goal]:
     ret = []
 
     # TODO this does the logging thing
-    elf = ELF(bin_path)
+    loader = cle.Loader(bin_path)
 
     for name in ['win', 'goal', 'wins']:
-        if name in elf.symbols:
-            ret.append(WinFunction(name, elf.symbols[name]))
+        sym = loader.find_symbol(name)
+        if sym != None:
+            print(sym.rebased_addr)
+            ret.append(WinFunction(name, sym.rebased_addr))
 
     return ret
