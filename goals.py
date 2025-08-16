@@ -15,22 +15,17 @@ class WinFunction(Goal):
     name: str
     addr: int
 
+    def __str__(self) -> str:
+        return f"Win Function: {self.name} @ 0x{self.addr:x}"
+
 
 @dataclass(frozen=True)
 class SystemFunction(Goal):
     """A system() entry in the PLT"""
     addr: int
 
-
-def print_goals(goals: list[Goal]):
-    for goal in goals:
-        match goal:
-            case WinFunction():
-                print(f"Win Function: {goal.name} @ 0x{goal.addr:x}")
-            case SystemFunction():
-                print(f"system() PLT entry @ 0x{goal.addr:x}")
-            case _:
-                raise ValueError("Goal is not a Goal!")
+    def __str__(self) -> str:
+        return f"system() PLT entry @ 0x{self.addr:x}"
 
 
 def find_goals(bin: Binary) -> list[Goal]:

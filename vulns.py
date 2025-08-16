@@ -18,12 +18,18 @@ class StackBufferOverflow(Vulnerability):
     max_write_size: Optional[int]
     needed_input: bytes
 
+    def __str__(self) -> str:
+        return f"Stack Buffer Overflow @ {self.addr} (rip offset: {self.saved_rip_offset}, max write size: {self.max_write_size})"
+
 
 @dataclass
 class WinFunctionCall(Vulnerability):
     name: str
     addr: int
     state: angr.SimState
+
+    def __str__(self) -> str:
+        return f"Win Function Call: {self.name}"
 
 
 def find_gets_vulns(bin: Binary) -> list[Vulnerability]:

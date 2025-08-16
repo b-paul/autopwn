@@ -3,7 +3,7 @@ import os
 from pwn import log, process, tube
 
 from binary import Binary
-from goals import find_goals, print_goals
+from goals import find_goals
 from vulns import find_vulns
 from exploit import exploit
 
@@ -19,23 +19,14 @@ def main():
 
     if args.find_goals:
         goals = find_goals(binary)
-        print_goals(goals)
+        for goal in goals:
+            print(goal)
         return
 
     goals = find_goals(binary)
     vulns = find_vulns(binary, goals)
 
-    if len(goals) == 0:
-        print("No goals found")
-        exit(1)
-    elif len(goals) > 1:
-        print("Multiple goals found, choosing first")
-
-    print(goals)
-    print(vulns)
-
-    goal = goals[0]
-    exploit(binary, goal, vulns)
+    exploit(binary, goals, vulns)
 
 def _log(self, level, msg, args, kwargs, msgtype, progress = None):
     pass
