@@ -1,3 +1,5 @@
+from binary import Binary
+
 class Vulnerability():
     """Abstract class for potentially usable vulnerabilities"""
 
@@ -7,5 +9,5 @@ class DirectFgetsStackOverflow(Vulnerability):
         self._buf_size = buf_size
         self._write_size = write_size
 
-def find_vulns(bin_path: str) -> list[Vulnerability]:
+def find_vulns(bin: Binary) -> list[Vulnerability]:
     pass
