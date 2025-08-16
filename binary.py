@@ -7,7 +7,7 @@ class Binary():
 
         self.loader = cle.Loader(path)
 
-        elf = ELF(path)
+        elf = ELF(path, checksec=False)
 
         self.relro = elf.relro
         self.canary = elf.canary
