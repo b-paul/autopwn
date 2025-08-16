@@ -5,7 +5,8 @@ import r2pipe
 
 from typing import Optional
 
-from pwn import ELF, context
+from pwnlib.context import context
+from pwnlib.elf.elf import ELF
 
 
 class Binary:
