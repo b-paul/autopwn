@@ -5,10 +5,8 @@ from pwn import *
 exe = ELF("./main")
 
 context.binary = exe
-context.terminal = 'foot'
 
 r = process([exe.path])
-gdb.attach(r)
 
 r.send(b'A' * 88)
 
