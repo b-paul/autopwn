@@ -1,4 +1,3 @@
-import angr
 from binary import Binary
 from dataclasses import dataclass
 from typing import Optional
@@ -30,6 +29,11 @@ class WinFunctionCall(Vulnerability):
 
     def __str__(self) -> str:
         return f"Win Function Call: {self.name}"
+
+
+@dataclass
+class UnconstrainedPrintf(Vulnerability):
+    addr: int
 
 
 def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
@@ -100,11 +104,31 @@ def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     return ret
 
 
+def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
+    ret = []
+
+    crossrefs = bin.crossref_states("sym.imp.printf", bin.angr.factory.full_init_state())
+    for crossref, state in crossrefs:
+        rdi = state.solver.eval(state.regs.rdi, cast_to=int)
+
+        is_variable = state.solver.satisfiable(extra_constraints=[state.regs.rdi != rdi])
+        if is_variable:
+            continue
+
+        first_byte = state.solver.eval(state.memory.load(rdi, 1), cast_to=int)
+        is_user_controlled = state.solver.satisfiable(extra_constraints=[state.memory.load(rdi, 1) != first_byte])
+        if is_user_controlled:
+            ret.append(UnconstrainedPrintf(crossref["from"]))
+
+    return ret
+    
+
 def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret = []
 
     ret += find_gets_vulns(bin)
     ret += find_fgets_vulns(bin)
     ret += find_win_vulns(bin, goals)
+    ret += find_printf_vulns(bin)
 
     return ret

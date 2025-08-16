@@ -26,6 +26,9 @@ def main():
     goals = find_goals(binary)
     vulns = find_vulns(binary, goals)
 
+    print(goals)
+    print(vulns)
+
     exploit(binary, goals, vulns)
 
 def _log(self, level, msg, args, kwargs, msgtype, progress = None):
