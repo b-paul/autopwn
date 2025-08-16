@@ -1,4 +1,5 @@
 import argparse
+import logging
 
 from binary import Binary
 from goals import find_goals
@@ -11,6 +12,8 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Print extra debug information")
     parser.add_argument("-i", "--interactive", action="store_true", help="Enable the pwn TUI")
     args = parser.parse_args()
+
+    logging.getLogger("angr").setLevel(999)
 
     binary = Binary(args.path[0])
 
