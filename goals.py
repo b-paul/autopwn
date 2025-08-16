@@ -1,3 +1,5 @@
+import angr
+
 from binary import Binary
 from dataclasses import dataclass
 
@@ -17,7 +19,7 @@ def print_goals(goals: list[Goal]):
     for goal in goals:
         match goal:
             case WinFunction():
-                print(f"Win Function: {goal._name} @ 0x{goal.addr():x}")
+                print(f"Win Function: {goal.name} @ 0x{goal.addr:x}")
 
 
 def find_goals(bin: Binary) -> list[Goal]:
@@ -35,7 +37,23 @@ def find_win_functions(bin: Binary) -> list[Goal]:
             found_goals.append(WinFunction(name, sym.rebased_addr))
 
     # Otherwise, try to detect them from their behaviour
-    #print(bin.afl)
-    #print(bin.crossrefs(bin.afl[0]["offset"]))
+    # If it opens a flag.txt file, it's probably a win function
+    fopen = next((fn for fn in bin.afl if fn["name"] == "sym.imp.fopen"), None)
+    if fopen:
+        crossrefs = bin.crossrefs(fopen["offset"])
+        for crossref in crossrefs:
+            caller = next(fn for fn in bin.afl if fn["name"] == crossref["fcn_name"])
+            options = angr.options.unicorn
+            check = bin.angr.factory.call_state(
+                bin.angr.loader.find_symbol(caller["name"].removeprefix("sym.")).rebased_addr,
+                add_options=options
+            )
+
+            simgr = bin.angr.factory.simulation_manager(check)
+            simgr.explore(find=crossref["from"], avoid=[])
+
+            for i, found in enumerate(simgr.found):
+                print(f"{i}:", bin.load_string(found.solver.eval(found.regs.rdi)))
+
 
     return found_goals
