@@ -29,7 +29,8 @@ class SystemFunction(Goal):
 
 
 def find_goals(bin: Binary) -> list[Goal]:
-    return list(set(find_win_functions(bin)))
+    # Blame StackOverflow: https://stackoverflow.com/a/17016257
+    return list(dict.fromkeys(find_win_functions(bin)))
 
 
 def find_win_functions(bin: Binary) -> list[Goal]:
@@ -39,7 +40,6 @@ def find_win_functions(bin: Binary) -> list[Goal]:
     for name in ['win', 'goal', 'wins']:
         sym = bin.loader.find_symbol(name)
         if sym is not None:
-            print(sym.rebased_addr)
             found_goals.append(WinFunction(name, sym.rebased_addr))
 
     # Otherwise, try to detect them from their behaviour
@@ -61,8 +61,9 @@ def find_win_functions(bin: Binary) -> list[Goal]:
 
 
     system = next((fn for fn in bin.afl if fn["name"] == "sym.imp.system"), None)
+    system_goals = []
     if system:
-        found_goals.append(SystemFunction(system["offset"]))
+        system_goals.append(SystemFunction(system["offset"]))
         crossrefs = bin.crossrefs(system["offset"])
         for crossref in crossrefs:
             caller = next(fn for fn in bin.afl if fn["name"] == crossref["fcn_name"])
@@ -76,5 +77,6 @@ def find_win_functions(bin: Binary) -> list[Goal]:
                 if "flag.txt" in bin.load_string(found.solver.eval(found.regs.rdi)):
                     found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
 
+    found_goals += system_goals
 
     return found_goals

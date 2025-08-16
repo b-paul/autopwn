@@ -11,6 +11,7 @@ int main(void) {
     char buf[100];
     gets(buf);
     printf(buf);
+    printf("\n");
     gets(buf);
     return 0;
 }

@@ -6,6 +6,10 @@ from goals import Goal, WinFunction
 import angr
 
 
+options = angr.options.unicorn
+options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
+
+
 class Vulnerability:
     # This should really be renamed to Primative
     """Abstract class for potentially usable vulnerabilities"""
@@ -35,6 +39,7 @@ class WinFunctionCall(Vulnerability):
 @dataclass
 class UnconstrainedPrintf(Vulnerability):
     addr: int
+    state: angr.SimState
 
 
 @dataclass
@@ -52,8 +57,6 @@ def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
 
     ret = []
 
-    options = angr.options.unicorn
-    options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
     state = bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile)
 
     for crossref, found in bin.crossref_states("sym.imp.gets", state):
@@ -101,8 +104,6 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
 def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret = []
 
-    options = angr.options.unicorn
-    options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
     for goal in goals:
         if isinstance(goal, WinFunction):
             for crossref, found in bin.crossref_states(
@@ -118,7 +119,8 @@ def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
     ret = []
 
     crossrefs = bin.crossref_states(
-        "sym.imp.printf", bin.angr.factory.full_init_state()
+        "sym.imp.printf",
+        bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile)
     )
     for crossref, state in crossrefs:
         rdi = state.solver.eval(state.regs.rdi, cast_to=int)
@@ -134,7 +136,7 @@ def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
             extra_constraints=[state.memory.load(rdi, 1) != first_byte]
         )
         if is_user_controlled:
-            ret.append(UnconstrainedPrintf(crossref["from"]))
+            ret.append(UnconstrainedPrintf(crossref["from"], state))
 
     return ret
 

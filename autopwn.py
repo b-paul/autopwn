@@ -1,7 +1,7 @@
 import argparse
 import os
-from pwn import log, process, tube
 
+from pwn import log, process, tube
 from binary import Binary
 from goals import find_goals
 from vulns import find_vulns
@@ -29,7 +29,8 @@ def main():
     print(goals)
     print(vulns)
 
-    exploit(binary, goals, vulns)
+    output = exploit(binary, goals, vulns)
+    print(output.decode())
 
 def _log(self, level, msg, args, kwargs, msgtype, progress = None):
     pass
