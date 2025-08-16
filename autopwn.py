@@ -35,6 +35,9 @@ def main():
     #     StackBufferOverflow(0x401183, 0x78, None)
     # ]
 
+    print(goals)
+    print(vulns)
+
     goal = goals[0]
     exploit(binary, goal, vulns)
 

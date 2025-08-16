@@ -35,7 +35,7 @@ def find_win_functions(bin: Binary) -> list[Goal]:
             found_goals.append(WinFunction(name, sym.rebased_addr))
 
     # Otherwise, try to detect them from their behaviour
-    print(bin.afl)
-    print(bin.crossrefs(bin.afl[0]["offset"]))
+    #print(bin.afl)
+    #print(bin.crossrefs(bin.afl[0]["offset"]))
 
     return found_goals

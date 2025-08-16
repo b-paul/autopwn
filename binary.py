@@ -1,8 +1,10 @@
+import angr
 import cle
 import json
 import r2pipe
 
 from pwn import ELF
+
 
 class Binary:
     def __init__(self, path: str):
@@ -10,7 +12,9 @@ class Binary:
 
         self.loader = cle.Loader(path)
 
-        self.elf = ELF(path)
+        self.elf = ELF(path, checksec=False)
+
+        self.angr = angr.Project(path, auto_load_libs=False)
 
         self.relro = self.elf.relro
         self.canary = self.elf.canary
