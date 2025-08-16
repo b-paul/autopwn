@@ -52,8 +52,8 @@ def find_win_functions(bin: Binary) -> list[Goal]:
             simgr = bin.angr.factory.simulation_manager(check)
             simgr.explore(find=crossref["from"], avoid=[])
 
-            for i, found in enumerate(simgr.found):
-                print(f"{i}:", bin.load_string(found.solver.eval(found.regs.rdi)))
-
+            strings = set([bin.load_string(found.solver.eval(found.regs.rdi)) for found in simgr.found])
+            if any("flag.txt" in string for string in strings):
+                found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
 
     return found_goals

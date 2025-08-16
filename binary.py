@@ -33,6 +33,6 @@ class Binary:
     def crossrefs(self, symbol: int):
         return json.loads(self.r2.cmd(f"axtj {symbol}"))
 
-    def load_string(self, addr: int):
+    def load_string(self, addr: int) -> str:
         self.r2.cmd(f"s {addr}")
         return self.r2.cmd("ps")
