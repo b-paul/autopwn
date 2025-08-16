@@ -9,14 +9,14 @@ class Goal():
     """
 
 
-@dataclass
+@dataclass(frozen=True)
 class WinFunction(Goal):
     """A function that might solve the challenge when called"""
-    name: int
+    name: str
     addr: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class SystemFunction(Goal):
     """A system() entry in the PLT"""
     addr: int

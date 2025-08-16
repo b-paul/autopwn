@@ -23,7 +23,7 @@ def main():
         return
 
     goals = find_goals(binary)
-    vulns = find_vulns(binary)
+    vulns = find_vulns(binary, goals)
 
     if len(goals) == 0:
         print("No goals found")

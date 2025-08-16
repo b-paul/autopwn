@@ -1,6 +1,8 @@
+import angr
 from binary import Binary
 from dataclasses import dataclass
 from typing import Optional
+from goals import Goal, WinFunction
 
 
 class Vulnerability:
@@ -12,6 +14,13 @@ class StackBufferOverflow(Vulnerability):
     addr: int
     saved_rip_offset: int
     max_write_size: Optional[int]
+
+
+@dataclass
+class WinFunctionCall(Vulnerability):
+    name: str
+    addr: int
+    state: angr.SimState
 
 
 def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
@@ -53,10 +62,22 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
     return ret
 
 
-def find_vulns(bin: Binary) -> list[Vulnerability]:
+def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
+    ret = []
+
+    for goal in goals:
+        if isinstance(goal, WinFunction):
+            for crossref, found in bin.crossref_states(goal.addr, bin.angr.factory.full_init_state()):
+                ret.append(WinFunctionCall(goal.name, goal.addr, found))
+
+    return ret
+
+
+def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret = []
 
     ret += find_gets_vulns(bin)
     ret += find_fgets_vulns(bin)
+    ret += find_win_vulns(bin, goals)
 
     return ret

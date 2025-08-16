@@ -35,17 +35,22 @@ class Binary:
         return self.r2.cmd("ps")
 
     # What's the type of state?!??!?!?!??!?!!?!?!!!?!?
-    def crossref_states(self, symbol: str, state: angr.sim_state.SimState) -> list[tuple]:
+    def crossref_states(self, symbol: int | str, state: angr.SimState) -> list[tuple]:
         """
         Get a list of angr states that reach a crossreference to a symbol call, starting at the given (angr) state
         """
-        fn = next((fn for fn in self.afl if fn["name"] == symbol), None)
-        if fn is None:
-            return []
+        if isinstance(symbol, str):
+            fn = next((fn for fn in self.afl if fn["name"] == symbol), None)
+            if fn is None:
+                return []
 
-        crossrefs = self.crossrefs(fn["offset"])
-        if crossrefs == []:
-            return []
+            crossrefs = self.crossrefs(fn["offset"])
+            if crossrefs == []:
+                return []
+        else:
+            crossrefs = self.crossrefs(symbol)
+            if crossrefs == []:
+                return []
 
         d = []
         for crossref in crossrefs:
