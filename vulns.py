@@ -1,13 +1,15 @@
 from binary import Binary
+from dataclasses import dataclass
+from typing import Optional
 
 class Vulnerability():
     """Abstract class for potentially usable vulnerabilities"""
 
-class DirectFgetsStackOverflow(Vulnerability):
-    """A call to fgets into a stack buffer that overflows which has no reach condition"""
-    def __init__(self, buf_size: int, write_size: int):
-        self._buf_size = buf_size
-        self._write_size = write_size
+@dataclass
+class StackBufferOverflow(Vulnerability):
+    addr: int
+    saved_rip_offset: int
+    max_write_size: Optional[int]
 
 def find_vulns(bin: Binary) -> list[Vulnerability]:
     pass
