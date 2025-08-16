@@ -3,6 +3,8 @@ import cle
 import json
 import r2pipe
 
+from typing import Optional
+
 from pwn import ELF
 
 
@@ -34,8 +36,12 @@ class Binary:
         self.r2.cmd(f"s {addr}")
         return self.r2.cmd("ps")
 
-    # What's the type of state?!??!?!?!??!?!!?!?!!!?!?
-    def crossref_states(self, symbol: int | str, state: angr.SimState) -> list[tuple]:
+    def crossref_states(
+        self,
+        symbol: int | str,
+        state: angr.sim_state.SimState,
+        goal_constraint: Optional[callable] = None,
+    ) -> list[tuple]:
         """
         Get a list of angr states that reach a crossreference to a symbol call, starting at the given (angr) state
         """
@@ -54,10 +60,14 @@ class Binary:
 
         d = []
         for crossref in crossrefs:
-            print(crossref)
             goal = crossref["from"]
-            simgr = self.angr.factory.simulation_manager(state)
+            simgr = self.angr.factory.simulation_manager(state.copy())
             simgr.explore(find=goal)
-            d += [(crossref, found) for found in simgr.found]
+            if goal_constraint is not None:
+                d += [
+                    (crossref, found) for found in simgr.found if goal_constraint(found)
+                ]
+            else:
+                d += [(crossref, found) for found in simgr.found]
 
         return d
