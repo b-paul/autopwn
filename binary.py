@@ -39,7 +39,7 @@ class Binary:
     def crossref_states(
         self,
         symbol: int | str,
-        state: angr.sim_state.SimState,
+        state: angr.SimState,
         goal_constraint: Optional[callable] = None,
     ) -> list[tuple]:
         """

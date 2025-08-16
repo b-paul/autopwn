@@ -7,6 +7,7 @@ import angr
 
 
 class Vulnerability:
+    # This should really be renamed to Primative
     """Abstract class for potentially usable vulnerabilities"""
 
 
@@ -15,7 +16,7 @@ class StackBufferOverflow(Vulnerability):
     addr: int
     saved_rip_offset: int
     max_write_size: Optional[int]
-    needed_input: bytes
+    state: angr.SimState
 
     def __str__(self) -> str:
         return f"Stack Buffer Overflow @ {self.addr} (rip offset: {self.saved_rip_offset}, max write size: {self.max_write_size})"
@@ -36,6 +37,16 @@ class UnconstrainedPrintf(Vulnerability):
     addr: int
 
 
+@dataclass
+class BufferWrite(Vulnerability):
+    """Write arbitrary bytes to a buffer from stdin"""
+
+    instruction_addr: int
+    buffer_addr: int
+    buffer_type: str | None
+    buffer_len: int | None
+
+
 def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
     """Find calls to gets into a stack buffer"""
 
@@ -54,9 +65,7 @@ def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
         # rdi-rbp is the number of bytes to write from the buffer to the end of the stack frame,
         # 8 past that is the return address
 
-        input = found.solver.eval(found.posix.stdin.load(0, found.posix.stdin.size), cast_to=bytes)
-
-        ret.append(StackBufferOverflow(crossref["from"], rip_offset, None, input))
+        ret.append(StackBufferOverflow(crossref["from"], rip_offset, None, found))
 
     return ret
 
@@ -84,9 +93,7 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
         rsi = found.solver.eval(found.regs.rsi, cast_to=int)
         rip_offset = found.solver.eval(rip_offset, cast_to=int)
 
-        input = found.solver.eval(found.posix.stdin.load(0, found.posix.stdin.size), cast_to=bytes)
-
-        ret.append(StackBufferOverflow(crossref["from"], rip_offset, rsi, input))
+        ret.append(StackBufferOverflow(crossref["from"], rip_offset, rsi, found))
 
     return ret
 
@@ -98,7 +105,10 @@ def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
     for goal in goals:
         if isinstance(goal, WinFunction):
-            for crossref, found in bin.crossref_states(goal.addr, bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile)):
+            for crossref, found in bin.crossref_states(
+                goal.addr,
+                bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile),
+            ):
                 ret.append(WinFunctionCall(goal.name, goal.addr, found))
 
     return ret
@@ -107,18 +117,50 @@ def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
 def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
     ret = []
 
-    crossrefs = bin.crossref_states("sym.imp.printf", bin.angr.factory.full_init_state())
+    crossrefs = bin.crossref_states(
+        "sym.imp.printf", bin.angr.factory.full_init_state()
+    )
     for crossref, state in crossrefs:
         rdi = state.solver.eval(state.regs.rdi, cast_to=int)
 
-        is_variable = state.solver.satisfiable(extra_constraints=[state.regs.rdi != rdi])
+        is_variable = state.solver.satisfiable(
+            extra_constraints=[state.regs.rdi != rdi]
+        )
         if is_variable:
             continue
 
         first_byte = state.solver.eval(state.memory.load(rdi, 1), cast_to=int)
-        is_user_controlled = state.solver.satisfiable(extra_constraints=[state.memory.load(rdi, 1) != first_byte])
+        is_user_controlled = state.solver.satisfiable(
+            extra_constraints=[state.memory.load(rdi, 1) != first_byte]
+        )
         if is_user_controlled:
             ret.append(UnconstrainedPrintf(crossref["from"]))
+
+    return ret
+
+
+def find_buffer_writes(bin: Binary) -> list[BufferWrite]:
+    ret = []
+
+    def constraint(state: angr.SimState) -> bool:
+        # rdi is constant
+        rdi = state.solver.eval(state.regs.rdi)
+        return not state.solver.satisfiable(extra_constraints=[state.regs.rdi != rdi])
+
+    crossrefs = bin.crossref_states(
+        "sym.imp.gets", bin.angr.factory.full_init_state(), constraint
+    ) + bin.crossref_states(
+        "sym.imp.fgets", bin.angr.factory.full_init_state(), constraint
+    )
+
+    for crossref, state in crossrefs:
+        rdi = state.solver.eval(state.regs.rdi, cast_to=int)
+        if rdi & 0x1111111111111111111111111111111000000 == 0:
+            buffer_type = "Global"
+        else:
+            buffer_type = None
+        buffer_len = None
+        ret.append(BufferWrite(crossref["from"], rdi, buffer_type, buffer_len))
 
     return ret
 
@@ -136,6 +178,7 @@ def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret += find_fgets_vulns(bin)
     ret += find_win_vulns(bin, goals)
     ret += find_printf_vulns(bin)
+    ret += find_buffer_writes(bin)
 
     bin.angr.hook_symbol("printf", angr.SIM_PROCEDURES["libc"]["printf"]())
 
