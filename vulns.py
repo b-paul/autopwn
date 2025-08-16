@@ -36,8 +36,8 @@ def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
         simgr = bin.angr.factory.simulation_manager(state)
         simgr.explore(find=goal)
         for found in simgr.found:
-            rdi = found.solver.eval(found.regs.get("rdi"), cast_to=int)
-            rbp = found.solver.eval(found.regs.get("rbp"), cast_to=int)
+            rdi = found.solver.eval(found.regs.rdi, cast_to=int)
+            rbp = found.solver.eval(found.regs.rbp, cast_to=int)
 
             rip_offset = rbp - rdi + 8
 
@@ -68,9 +68,9 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
         simgr = bin.angr.factory.simulation_manager(state)
         simgr.explore(find=goal)
         for found in simgr.found:
-            rdi = found.solver.eval(found.regs.get("rdi"), cast_to=int)
-            rsi = found.solver.eval(found.regs.get("rsi"), cast_to=int)
-            rbp = found.solver.eval(found.regs.get("rbp"), cast_to=int)
+            rdi = found.solver.eval(found.regs.rdi, cast_to=int)
+            rsi = found.solver.eval(found.regs.rsi, cast_to=int)
+            rbp = found.solver.eval(found.regs.rbp, cast_to=int)
 
             rip_offset = rbp - rdi + 8
             write_size = rsi
