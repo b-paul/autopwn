@@ -1,19 +1,16 @@
 from binary import Binary
+from dataclasses import dataclass
 
 class Goal():
     """
     Abstract class for a possible goal.
     """
 
+@dataclass
 class WinFunction(Goal):
     """A function that might solve the challenge when called"""
-    def __init__(self, name: str, addr: int):
-        self._name = name
-        self._addr = addr
-
-    def addr(self) -> int:
-        """The memory address of this function"""
-        return self._addr
+    name: int
+    addr: int
 
 
 def print_goals(goals: list[Goal]):
