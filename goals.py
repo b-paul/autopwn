@@ -29,7 +29,7 @@ class SystemFunction(Goal):
 
 
 def find_goals(bin: Binary) -> list[Goal]:
-    return find_win_functions(bin)
+    return list(set(find_win_functions(bin)))
 
 
 def find_win_functions(bin: Binary) -> list[Goal]:
