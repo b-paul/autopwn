@@ -90,9 +90,11 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
 def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret = []
 
+    options = angr.options.unicorn
+    options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
     for goal in goals:
         if isinstance(goal, WinFunction):
-            for crossref, found in bin.crossref_states(goal.addr, bin.angr.factory.full_init_state()):
+            for crossref, found in bin.crossref_states(goal.addr, bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile)):
                 ret.append(WinFunctionCall(goal.name, goal.addr, found))
 
     return ret
