@@ -178,8 +178,10 @@ def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
         def run(self, format: str):
             return
 
-    bin.angr.hook_symbol("printf", Printf())
-    bin.angr.hook_symbol("__printf__chk", Printf())
+    if bin.loader.find_symbol("printf") is not None:
+        bin.angr.rehook_symbol("printf", Printf(), False)
+    if bin.loader.find_symbol("__printf__chk") is not None:
+        bin.angr.rehook_symbol("__printf__chk", Printf(), False)
 
     ret += find_gets_vulns(bin)
     ret += find_fgets_vulns(bin)
@@ -187,7 +189,9 @@ def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret += find_printf_vulns(bin)
     ret += find_buffer_writes(bin)
 
-    bin.angr.hook_symbol("printf", angr.SIM_PROCEDURES["libc"]["printf"]())
-    bin.angr.hook_symbol("__printf_chk", angr.SIM_PROCEDURES["libc"]["printf"]())
+    if bin.loader.find_symbol("printf") is not None:
+        bin.angr.rehook_symbol("printf", angr.SIM_PROCEDURES["libc"]["printf"](), False)
+    if bin.loader.find_symbol("__printf__chk") is not None:
+        bin.angr.rehook_symbol("__printf_chk", angr.SIM_PROCEDURES["libc"]["printf"](), False)
 
     return ret

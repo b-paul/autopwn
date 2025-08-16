@@ -1,5 +1,4 @@
 import argparse
-import os
 
 from pwn import log, process, tube
 from binary import Binary
@@ -12,26 +11,22 @@ from mock import patch
 def main():
     parser = argparse.ArgumentParser(description="Find and exploit vulnerabilities in a binary")
     parser.add_argument("path", nargs=1)
-    parser.add_argument("-g", "--find-goals", action="store_true", help="Find goal functions and print them")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Print extra debug information")
     args = parser.parse_args()
 
     binary = Binary(args.path[0])
 
-    if args.find_goals:
-        goals = find_goals(binary)
-        for goal in goals:
-            print(goal)
-        return
-
     goals = find_goals(binary)
     vulns = find_vulns(binary, goals)
 
-    print(goals)
-    print(vulns)
+    if args.verbose:
+        print(goals)
+        print(vulns)
 
     try:
         output = exploit(binary, goals, vulns)
-        print(output.decode())
+        if output is not None:
+            print(f"Flag: {output.decode()}")
     except ExploitError as e:
         print(f"Failed to exploit: {e}")
         exit(1)

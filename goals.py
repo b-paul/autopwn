@@ -70,7 +70,8 @@ def find_win_functions(bin: Binary) -> list[Goal]:
             options = angr.options.unicorn
             state = bin.angr.factory.call_state(
                 bin.angr.loader.find_symbol(caller["name"].removeprefix("sym.")).rebased_addr,
-                add_options=options
+                add_options=options,
+                prototype="void func(void)"
             )
 
             for crossref, found in bin.crossref_states(system["offset"], state):
