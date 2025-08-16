@@ -55,17 +55,15 @@ def find_win_functions(bin: Binary) -> list[Goal]:
         for crossref in crossrefs:
             caller = next(fn for fn in bin.afl if fn["name"] == crossref["fcn_name"])
             options = angr.options.unicorn
-            check = bin.angr.factory.call_state(
+            state = bin.angr.factory.call_state(
                 bin.angr.loader.find_symbol(caller["name"].removeprefix("sym.")).rebased_addr,
                 add_options=options
             )
 
-            simgr = bin.angr.factory.simulation_manager(check)
-            simgr.explore(find=crossref["from"], avoid=[])
+            for crossref, found in bin.crossref_states(fopen["offset"], state):
+                if "flag.txt" in bin.load_string(found.solver.eval(found.regs.rdi)):
+                    found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
 
-            strings = set([bin.load_string(found.solver.eval(found.regs.rdi)) for found in simgr.found])
-            if any("flag.txt" in string for string in strings):
-                found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
 
     system = next((fn for fn in bin.afl if fn["name"] == "sym.imp.system"), None)
     if system:
@@ -74,16 +72,14 @@ def find_win_functions(bin: Binary) -> list[Goal]:
         for crossref in crossrefs:
             caller = next(fn for fn in bin.afl if fn["name"] == crossref["fcn_name"])
             options = angr.options.unicorn
-            check = bin.angr.factory.call_state(
+            state = bin.angr.factory.call_state(
                 bin.angr.loader.find_symbol(caller["name"].removeprefix("sym.")).rebased_addr,
                 add_options=options
             )
 
-            simgr = bin.angr.factory.simulation_manager(check)
-            simgr.explore(find=crossref["from"], avoid=[])
+            for crossref, found in bin.crossref_states(system["offset"], state):
+                if "flag.txt" in bin.load_string(found.solver.eval(found.regs.rdi)):
+                    found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
 
-            strings = set([bin.load_string(found.solver.eval(found.regs.rdi)) for found in simgr.found])
-            if any("flag.txt" in string for string in strings):
-                found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
 
     return found_goals
