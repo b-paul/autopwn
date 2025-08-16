@@ -121,14 +121,22 @@ def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
             ret.append(UnconstrainedPrintf(crossref["from"]))
 
     return ret
-    
+
 
 def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret = []
+
+    class Printf(angr.SimProcedure):
+        def run(self, format: str):
+            return
+
+    bin.angr.hook_symbol("printf", Printf())
 
     ret += find_gets_vulns(bin)
     ret += find_fgets_vulns(bin)
     ret += find_win_vulns(bin, goals)
     ret += find_printf_vulns(bin)
+
+    bin.angr.hook_symbol("printf", angr.SIM_PROCEDURES["libc"]["printf"]())
 
     return ret
