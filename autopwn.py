@@ -5,7 +5,7 @@ from pwn import log, process, tube
 from binary import Binary
 from goals import find_goals
 from vulns import find_vulns
-from exploit import exploit
+from exploit import exploit, ExploitError
 
 from mock import patch
 
@@ -29,8 +29,12 @@ def main():
     print(goals)
     print(vulns)
 
-    output = exploit(binary, goals, vulns)
-    print(output.decode())
+    try:
+        output = exploit(binary, goals, vulns)
+        print(output.decode())
+    except ExploitError as e:
+        print(f"Failed to exploit: {e}")
+        exit(1)
 
 def _log(self, level, msg, args, kwargs, msgtype, progress = None):
     pass

@@ -3,15 +3,21 @@
 
 #define PASSWORD "password"
 
+char name[100];
+
 char *gets(char *s);
 
 int main(void) {
     char buf[100];
 
     puts("Checking permissions...");
-    printf("You are ");
+    printf("You are logged in as ");
     fflush(stdout);
     system("whoami");
+
+    printf("Enter your full name: ");
+    fflush(stdout);
+    fgets(name, 100, stdin);
 
     printf("Enter your request: ");
     fflush(stdout);
