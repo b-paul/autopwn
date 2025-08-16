@@ -23,7 +23,7 @@ class Binary:
         self.nx = self.elf.nx
         self.pie = self.elf.pie
 
-        self.r2 = r2pipe.open(path)
+        self.r2 = r2pipe.open(path, ["-2"])
         self.r2.cmd("aaa")
         self.afl = json.loads(self.r2.cmd("aflj"))
 
