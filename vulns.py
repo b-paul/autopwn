@@ -160,7 +160,7 @@ def find_buffer_writes(bin: Binary) -> list[BufferWrite]:
         rdi = state.solver.eval(state.regs.rdi, cast_to=int)
         rsi = state.solver.eval(state.regs.rsi, cast_to=int)
 
-        if rdi & 0x1111111111111111111111111111111000000 == 0:
+        if not bin.pie and rdi & 0x1111111111111111111111111111111000000 == 0:
             buffer_type = "Global"
         if crossref["refname"] == "sym.imp.fgets" and not state.solver.satisfiable(extra_constraints=[state.regs.rsi != rsi]):
             buffer_len = rsi
