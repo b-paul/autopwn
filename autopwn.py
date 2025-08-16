@@ -1,9 +1,13 @@
 import argparse
+import os
+from pwn import log, process, tube
 
 from binary import Binary
 from goals import find_goals, print_goals
 from vulns import find_vulns
 from exploit import exploit
+
+from mock import patch
 
 def main():
     parser = argparse.ArgumentParser(description="Find and exploit vulnerabilities in a binary")
@@ -27,20 +31,20 @@ def main():
     elif len(goals) > 1:
         print("Multiple goals found, choosing first")
 
-    # goals = [
-    #     WinFunction("win", 0x401156)
-    # ]
-
-    # vulns = [
-    #     StackBufferOverflow(0x401183, 0x78, None)
-    # ]
-
     print(goals)
     print(vulns)
 
     goal = goals[0]
     exploit(binary, goal, vulns)
 
+def _log(self, level, msg, args, kwargs, msgtype, progress = None):
+    pass
+
+def _info(self, msg):
+    pass
 
 if __name__ == "__main__":
-    main()
+    with patch.object(process, "_log", _log):
+        with patch.object(tube, "_log", _log):
+            with patch.object(type(log), "_log", _log):
+                main()
