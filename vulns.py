@@ -154,12 +154,16 @@ def find_buffer_writes(bin: Binary) -> list[BufferWrite]:
     )
 
     for crossref, state in crossrefs:
+        buffer_type = None
+        buffer_len = None
+
         rdi = state.solver.eval(state.regs.rdi, cast_to=int)
+        rsi = state.solver.eval(state.regs.rsi, cast_to=int)
+
         if rdi & 0x1111111111111111111111111111111000000 == 0:
             buffer_type = "Global"
-        else:
-            buffer_type = None
-        buffer_len = None
+        if crossref["refname"] == "sym.imp.fgets" and not state.solver.satisfiable(extra_constraints=[state.regs.rsi != rsi]):
+            buffer_len = rsi
         ret.append(BufferWrite(crossref["from"], rdi, buffer_type, buffer_len))
 
     return ret
