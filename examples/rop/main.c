@@ -10,6 +10,8 @@ char *gets(char *s);
 int main(void) {
     char buf[100];
 
+    printf("My magic number is %d\n", 0xc35f);
+
     puts("Checking permissions...");
     printf("You are logged in as ");
     fflush(stdout);

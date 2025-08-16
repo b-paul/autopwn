@@ -162,7 +162,7 @@ def find_buffer_writes(bin: Binary) -> list[BufferWrite]:
         rdi = state.solver.eval(state.regs.rdi, cast_to=int)
         rsi = state.solver.eval(state.regs.rsi, cast_to=int)
 
-        if not bin.pie and rdi & 0x1111111111111111111111111111111000000 == 0:
+        if not bin.pie and rdi & 0xffffffffff000000 == 0:
             buffer_type = "Global"
         if crossref["refname"] == "sym.imp.fgets" and not state.solver.satisfiable(extra_constraints=[state.regs.rsi != rsi]):
             buffer_len = rsi
@@ -179,6 +179,7 @@ def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
             return
 
     bin.angr.hook_symbol("printf", Printf())
+    bin.angr.hook_symbol("__printf__chk", Printf())
 
     ret += find_gets_vulns(bin)
     ret += find_fgets_vulns(bin)
@@ -187,5 +188,6 @@ def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret += find_buffer_writes(bin)
 
     bin.angr.hook_symbol("printf", angr.SIM_PROCEDURES["libc"]["printf"]())
+    bin.angr.hook_symbol("__printf_chk", angr.SIM_PROCEDURES["libc"]["printf"]())
 
     return ret
