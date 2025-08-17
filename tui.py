@@ -6,7 +6,7 @@ from textual.widgets import Header, Footer, Log, Label, Markdown, ListView, List
 from binary import Binary
 from exploit import exploit, Remote, ExploitProgress
 from goals import Goal, WinFunction, SystemFunction, find_goals
-from vulns import Vulnerability, StackBufferOverflow, WinFunctionCall, UnconstrainedPrintf, BufferWrite, find_vulns
+from vulns import Vulnerability, StackBufferOverflow, WinFunctionCall, UnconstrainedPrintf, BufferWrite, ShString, find_vulns
 
 class SecurityFeatures(Grid):
     def __init__(self, *args, **kwargs) -> None:
@@ -95,6 +95,9 @@ class VulnItem(ListItem):
                     yield Label(f"Buffer type: {self.vuln.buffer_type}")
                     yield Label(f"Buffer address: 0x{self.vuln.buffer_addr:x}")
                     yield Label(f"Buffer length: {self.vuln.buffer_len}")
+            case ShString():
+                with Collapsible(title=f"\"sh\" string @ {self.vuln.addr:x}"):
+                    pass
             
 
 class Vulns(ListView):
