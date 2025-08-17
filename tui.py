@@ -4,7 +4,7 @@ from textual.containers import Horizontal, Vertical, Grid
 from textual.widgets import Header, Footer, Log, Label, Markdown, ListView, ListItem, Collapsible
 
 from binary import Binary
-from exploit import exploit, Remote
+from exploit import exploit, Remote, ExploitProgress
 from goals import Goal, WinFunction, SystemFunction, find_goals
 from vulns import Vulnerability, StackBufferOverflow, WinFunctionCall, UnconstrainedPrintf, BufferWrite, find_vulns
 
@@ -106,6 +106,27 @@ class Vulns(ListView):
         super().append(VulnItem(vuln))
 
 
+class TuiExploitProgress(ExploitProgress):
+    def __init__(self, log: Log) -> None:
+        super().__init__(True)
+        self.log = log
+
+    def starting_goal(self, goal: Goal):
+        self.log.write_line(f"Starting goal {goal}")
+
+    def achieved_goal(self, goal: Goal):
+        self.log.write_line(f"Achieved goal {goal}")
+
+    def starting_vuln(self, vuln: Vulnerability):
+        self.log.write_line(f"Using primitive {vuln}")
+
+    def giving_up_on_vuln(self, vuln: Vulnerability):
+        self.log.write_line(f"Gave up on using primitive {vuln}")
+
+    def print(self, message: str):
+        self.log.write_line(message)
+
+
 class Autopwn(App):
     CSS_PATH = "autopwn.tcss"
     BINDINGS = [("l", "load_binary", "Load binary"), ("e", "exploit_binary", "Exploit binary")]
@@ -133,7 +154,9 @@ class Autopwn(App):
     async def action_exploit_binary(self) -> None:
         self.ready = False
         self.refresh_bindings()
-        await asyncio.to_thread(lambda: exploit(self.binary, self.goals, self.vulns, self.remote))
+        output = await asyncio.to_thread(lambda: exploit(self.binary, self.goals, self.vulns, self.remote, TuiExploitProgress(self.query_one("#log"))))
+        if output is not None:
+            self.query_one("#log").write_line(f"Flag: {output.decode()}")
         self.ready = True
         self.refresh_bindings()
 
