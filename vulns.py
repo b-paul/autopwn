@@ -52,6 +52,11 @@ class BufferWrite(Vulnerability):
     buffer_len: int | None
 
 
+@dataclass
+class ShString(Vulnerability):
+    """The address of the string "sh\0" written somewhere in the binary"""
+    addr: int
+
 def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
     """Find calls to gets into a stack buffer"""
 
@@ -211,6 +216,14 @@ def find_buffer_writes(bin: Binary) -> list[BufferWrite]:
     return ret
 
 
+def find_sh_strings(bin: Binary) -> list[ShString]:
+    ret = []
+
+    ret += [ShString(addr) for addr in bin.elf.search(b'sh\0')]
+
+    return ret
+
+
 def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret = []
 
@@ -229,6 +242,7 @@ def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     ret += find_win_vulns(bin, goals)
     ret += find_printf_vulns(bin)
     ret += find_buffer_writes(bin)
+    ret += find_sh_strings(bin)
 
     if bin.loader.find_symbol("printf") is not None:
         bin.angr.rehook_symbol("printf", angr.SIM_PROCEDURES["libc"]["printf"](), False)
