@@ -73,6 +73,7 @@ def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
     return ret
 
 
+# TODO: Check whether these fgets calls are stdin?
 def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
     """Find calls to fgets into a stack buffer which writes past the buffer size"""
 
@@ -97,6 +98,34 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
         rip_offset = found.solver.eval(rip_offset, cast_to=int)
 
         ret.append(StackBufferOverflow(crossref["from"], rip_offset, rsi, found))
+
+    return ret
+
+
+def find_read_vulns(bin: Binary) -> list[Vulnerability]:
+    """Find calls to fgets into a stack buffer which writes past the buffer size"""
+
+    ret = []
+
+    options = angr.options.unicorn
+    options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
+    state = bin.angr.factory.full_init_state(add_options=options, stdin=angr.SimFile)
+
+    def constraint(state):
+        rip_offset = state.regs.rbp - state.regs.rsi + 8
+        write_size = state.regs.rdx
+
+        return state.satisfiable(extra_constraints=[write_size >= rip_offset + 8])
+
+    for crossref, found in bin.crossref_states("sym.imp.read", state, constraint):
+        rip_offset = found.regs.rbp - found.regs.rsi + 8
+        write_size = found.regs.rdx
+        found.solver.add(write_size >= rip_offset + 8)
+
+        size = found.solver.eval(write_size, cast_to=int)
+        rip_offset = found.solver.eval(rip_offset, cast_to=int)
+
+        ret.append(StackBufferOverflow(crossref["from"], rip_offset, size, found))
 
     return ret
 
@@ -196,6 +225,7 @@ def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
 
     ret += find_gets_vulns(bin)
     ret += find_fgets_vulns(bin)
+    ret += find_read_vulns(bin)
     ret += find_win_vulns(bin, goals)
     ret += find_printf_vulns(bin)
     ret += find_buffer_writes(bin)

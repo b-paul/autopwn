@@ -56,7 +56,7 @@ def find_win_functions(bin: Binary) -> list[Goal]:
             )
 
             for crossref, found in bin.crossref_states(fopen["offset"], state):
-                if "flag.txt" in bin.load_string(found.solver.eval(found.regs.rdi)):
+                if "flag" in bin.load_string(found.solver.eval(found.regs.rdi)):
                     found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
 
 
@@ -75,7 +75,7 @@ def find_win_functions(bin: Binary) -> list[Goal]:
             )
 
             for crossref, found in bin.crossref_states(system["offset"], state):
-                if "flag.txt" in bin.load_string(found.solver.eval(found.regs.rdi)):
+                if "flag" in bin.load_string(found.solver.eval(found.regs.rdi)):
                     found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
 
     found_goals += system_goals
