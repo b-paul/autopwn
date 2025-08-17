@@ -18,6 +18,7 @@ class Vulnerability:
 @dataclass
 class StackBufferOverflow(Vulnerability):
     addr: int
+    buf_addr: int
     saved_rip_offset: int
     max_write_size: Optional[int]
     state: angr.SimState
@@ -68,7 +69,7 @@ def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
         # rdi-rbp is the number of bytes to write from the buffer to the end of the stack frame,
         # 8 past that is the return address
 
-        ret.append(StackBufferOverflow(crossref["from"], rip_offset, None, found))
+        ret.append(StackBufferOverflow(crossref["from"], rdi, rip_offset, None, found))
 
     return ret
 
@@ -96,7 +97,7 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
         rsi = found.solver.eval(found.regs.rsi, cast_to=int)
         rip_offset = found.solver.eval(rip_offset, cast_to=int)
 
-        ret.append(StackBufferOverflow(crossref["from"], rip_offset, rsi, found))
+        ret.append(StackBufferOverflow(crossref["from"], rdi, rip_offset, rsi, found))
 
     return ret
 

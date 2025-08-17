@@ -72,3 +72,8 @@ class Binary:
                 d += [(crossref, found) for found in simgr.found]
 
         return d
+
+    def instruction_locations(self, instr: str) -> list[int]:
+        """Returns a list of addresses the given instruction exists at in program memory (radare addressing)"""
+        instrs = self.r2.cmd(f"/ad {instr}")
+        return [int(line.split()[0], base=16) for line in instrs.strip().split('\n')]
