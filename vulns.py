@@ -1,6 +1,6 @@
 from binary import Binary
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Generator
 from goals import Goal, WinFunction
 
 import angr
@@ -57,10 +57,8 @@ class ShString(Vulnerability):
     """The address of the string "sh\0" written somewhere in the binary"""
     addr: int
 
-def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
+def find_gets_vulns(bin: Binary) -> Generator[Vulnerability, None, None]:
     """Find calls to gets into a stack buffer"""
-
-    ret = []
 
     state = bin.angr.factory.full_init_state(add_options=options, stdin=angr.SimFile)
 
@@ -73,16 +71,12 @@ def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
         # rdi-rbp is the number of bytes to write from the buffer to the end of the stack frame,
         # 8 past that is the return address
 
-        ret.append(StackBufferOverflow(crossref["from"], rip_offset, None, found))
-
-    return ret
+        yield StackBufferOverflow(crossref["from"], rip_offset, None, found)
 
 
 # TODO: Check whether these fgets calls are stdin?
-def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
+def find_fgets_vulns(bin: Binary) -> Generator[Vulnerability, None, None]:
     """Find calls to fgets into a stack buffer which writes past the buffer size"""
-
-    ret = []
 
     options = angr.options.unicorn
     options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
@@ -102,15 +96,11 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
         rsi = found.solver.eval(found.regs.rsi, cast_to=int)
         rip_offset = found.solver.eval(rip_offset, cast_to=int)
 
-        ret.append(StackBufferOverflow(crossref["from"], rip_offset, rsi, found))
-
-    return ret
+        yield StackBufferOverflow(crossref["from"], rip_offset, rsi, found)
 
 
-def find_read_vulns(bin: Binary) -> list[Vulnerability]:
+def find_read_vulns(bin: Binary) -> Generator[Vulnerability, None, None]:
     """Find calls to fgets into a stack buffer which writes past the buffer size"""
-
-    ret = []
 
     options = angr.options.unicorn
     options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
@@ -130,28 +120,20 @@ def find_read_vulns(bin: Binary) -> list[Vulnerability]:
         size = found.solver.eval(write_size, cast_to=int)
         rip_offset = found.solver.eval(rip_offset, cast_to=int)
 
-        ret.append(StackBufferOverflow(crossref["from"], rip_offset, size, found))
-
-    return ret
+        yield StackBufferOverflow(crossref["from"], rip_offset, size, found)
 
 
-def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
-    ret = []
-
+def find_win_vulns(bin: Binary, goals: list[Goal]) -> Generator[Vulnerability, None, None]:
     for goal in goals:
         if isinstance(goal, WinFunction):
             for crossref, found in bin.crossref_states(
                 goal.addr,
                 bin.angr.factory.full_init_state(add_options=options, stdin=angr.SimFile),
             ):
-                ret.append(WinFunctionCall(goal.name, goal.addr, found))
-
-    return ret
+                yield WinFunctionCall(goal.name, goal.addr, found)
 
 
-def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
-    ret = []
-
+def find_printf_vulns(bin: Binary) -> Generator[Vulnerability, None, None]:
     base_state = bin.angr.factory.full_init_state(add_options=options, stdin=angr.SimFile)
     # This is required to avoid our 'reaching the printf' input from causing buffer
     # overflows. Ideally we'd just be able to tell it to minimise the length of the
@@ -181,14 +163,10 @@ def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
         state.libc.max_gets_size = 256
 
         if is_user_controlled:
-            ret.append(UnconstrainedPrintf(crossref["from"], state))
-
-    return ret
+            yield UnconstrainedPrintf(crossref["from"], state)
 
 
-def find_buffer_writes(bin: Binary) -> list[BufferWrite]:
-    ret = []
-
+def find_buffer_writes(bin: Binary) -> Generator[BufferWrite, None, None]:
     def constraint(state: angr.SimState) -> bool:
         # rdi is constant
         rdi = state.solver.eval(state.regs.rdi)
@@ -211,20 +189,14 @@ def find_buffer_writes(bin: Binary) -> list[BufferWrite]:
             buffer_type = "Global"
         if crossref["refname"] == "sym.imp.fgets" and not state.solver.satisfiable(extra_constraints=[state.regs.rsi != rsi]):
             buffer_len = rsi
-        ret.append(BufferWrite(crossref["from"], rdi, buffer_type, buffer_len))
-
-    return ret
+        yield BufferWrite(crossref["from"], rdi, buffer_type, buffer_len)
 
 
-def find_sh_strings(bin: Binary) -> list[ShString]:
-    ret = []
-
-    ret += [ShString(addr) for addr in bin.elf.search(b'sh\0')]
-
-    return ret
+def find_sh_strings(bin: Binary) -> Generator[ShString, None, None]:
+    yield from (ShString(addr) for addr in bin.elf.search(b'sh\0'))
 
 
-def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
+def find_vulns(bin: Binary, goals: list[Goal]) -> Generator[Vulnerability, None, None]:
     ret = []
 
     class Printf(angr.SimProcedure):
@@ -236,13 +208,13 @@ def find_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
     if bin.loader.find_symbol("__printf__chk") is not None:
         bin.angr.rehook_symbol("__printf__chk", Printf(), False)
 
-    ret += find_gets_vulns(bin)
-    ret += find_fgets_vulns(bin)
-    ret += find_read_vulns(bin)
-    ret += find_win_vulns(bin, goals)
-    ret += find_printf_vulns(bin)
-    ret += find_buffer_writes(bin)
-    ret += find_sh_strings(bin)
+    yield from find_gets_vulns(bin)
+    yield from find_fgets_vulns(bin)
+    yield from find_read_vulns(bin)
+    yield from find_win_vulns(bin, goals)
+    yield from find_printf_vulns(bin)
+    yield from find_buffer_writes(bin)
+    yield from find_sh_strings(bin)
 
     if bin.loader.find_symbol("printf") is not None:
         bin.angr.rehook_symbol("printf", angr.SIM_PROCEDURES["libc"]["printf"](), False)

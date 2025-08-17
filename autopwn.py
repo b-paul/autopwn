@@ -36,8 +36,8 @@ def main():
     else:
         binary = Binary(args.path[0])
 
-        goals = find_goals(binary)
-        vulns = find_vulns(binary, goals)
+        goals = list(find_goals(binary))
+        vulns = list(find_vulns(binary, goals))
 
         if args.verbose:
             print(goals)

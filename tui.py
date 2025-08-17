@@ -135,11 +135,13 @@ class Autopwn(App):
         self.query_one("#security").update_binary(self.binary)
 
         self.query_one("#log").write_line("Finding goals...")
-        self.goals = await asyncio.to_thread(lambda: find_goals(self.binary))
+        self.goals = list(await asyncio.to_thread(lambda: find_goals(self.binary)))
         for goal in self.goals:
             self.query_one("#goals").append(goal)
 
         self.query_one("#log").write_line("Finding vulnerabilities...")
-        self.vulns = await asyncio.to_thread(lambda: find_vulns(self.binary, self.goals))
+        self.vulns = list(await asyncio.to_thread(lambda: find_vulns(self.binary, self.goals)))
         for vuln in self.vulns:
             self.query_one("#vulns").append(vuln)
+
+        self.query_one("#log").write_line("Done!")

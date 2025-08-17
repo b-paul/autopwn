@@ -1,4 +1,5 @@
 import angr
+from typing import Generator
 
 from binary import Binary
 from dataclasses import dataclass
@@ -28,19 +29,20 @@ class SystemFunction(Goal):
         return f"system() PLT entry @ 0x{self.addr:x}"
 
 
-def find_goals(bin: Binary) -> list[Goal]:
-    # Blame StackOverflow: https://stackoverflow.com/a/17016257
-    return list(dict.fromkeys(find_win_functions(bin)))
+def find_goals(bin: Binary) -> Generator[Goal, None, None]:
+    found = set()
+    for win_function in find_win_functions(bin):
+        if win_function not in found:
+            yield win_function
+            found.add(win_function)
 
 
-def find_win_functions(bin: Binary) -> list[Goal]:
-    found_goals = []
-
+def find_win_functions(bin: Binary) -> Generator[Goal, None, None]:
     # First, try a list of well-known goal function names
     for name in ['win', 'goal', 'wins']:
         sym = bin.loader.find_symbol(name)
         if sym is not None:
-            found_goals.append(WinFunction(name, sym.rebased_addr))
+            yield WinFunction(name, sym.rebased_addr)
 
     # Otherwise, try to detect them from their behaviour
     # If it opens a flag.txt file, it's probably a win function
@@ -57,7 +59,7 @@ def find_win_functions(bin: Binary) -> list[Goal]:
 
             for crossref, found in bin.crossref_states(fopen["offset"], state):
                 if "flag" in bin.load_string(found.solver.eval(found.regs.rdi)):
-                    found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
+                    yield WinFunction(caller["name"].removeprefix("sym."), caller["offset"])
 
 
     system = next((fn for fn in bin.afl if fn["name"] == "sym.imp.system"), None)
@@ -76,8 +78,6 @@ def find_win_functions(bin: Binary) -> list[Goal]:
 
             for crossref, found in bin.crossref_states(system["offset"], state):
                 if "flag" in bin.load_string(found.solver.eval(found.regs.rdi)):
-                    found_goals.append(WinFunction(caller["name"].removeprefix("sym."), caller["offset"]))
+                    yield WinFunction(caller["name"].removeprefix("sym."), caller["offset"])
 
-    found_goals += system_goals
-
-    return found_goals
+    yield from system_goals
