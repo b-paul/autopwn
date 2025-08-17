@@ -4,7 +4,7 @@ import logging
 from binary import Binary
 from goals import find_goals
 from vulns import find_vulns
-from exploit import exploit, ExploitError, Remote
+from exploit import exploit, ExploitError, Remote, ExploitProgress
 from tui import Autopwn
 
 def main():
@@ -44,7 +44,7 @@ def main():
             print(vulns)
 
         try:
-            output = exploit(binary, goals, vulns, remote)
+            output = exploit(binary, goals, vulns, remote, ExploitProgress(args.verbose))
             if output is not None:
                 print(f"Flag: {output.decode()}")
         except ExploitError as e:
