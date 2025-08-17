@@ -1,20 +1,53 @@
 import asyncio
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, Grid
 from textual.widgets import Header, Footer, Log, Label, Markdown, ListView, ListItem, Collapsible
 
 from binary import Binary
 from goals import Goal, WinFunction, SystemFunction, find_goals
 from vulns import Vulnerability, StackBufferOverflow, WinFunctionCall, UnconstrainedPrintf, BufferWrite, find_vulns
 
-class SecurityFeatures(Markdown):
-    def __init__(self, binary: Binary, *args, **kwargs) -> None:
-        super().__init__(f"""- RELRO: {binary.relro}
-- PIE: {binary.pie}
-- Canaries: {binary.canary}
-- NX: {binary.nx}
-""", *args, **kwargs)
+class SecurityFeatures(Grid):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.border_title = "Security Features"
+
+    def compose(self) -> ComposeResult:
+        yield Label("RELRO:")
+        yield Label("(No binary loaded)", id="relro")
+        yield Label("PIE:")
+        yield Label("(No binary loaded)", id="pie")
+        yield Label("Canaries:")
+        yield Label("(No binary loaded)", id="canaries")
+        yield Label("NX:")
+        yield Label("(No binary loaded)", id="nx")
+
+    def update_binary(self, binary: Binary):
+        if binary.relro == "Full":
+            self.query_one("#relro").styles.color = "lime"
+        elif binary.relro == "Partial":
+            self.query_one("#relro").styles.color = "yellow"
+        else:
+            self.query_one("#relro").styles.color = "red"
+        self.query_one("#relro").update(str(binary.relro))
+
+        if binary.pie:
+            self.query_one("#pie").styles.color = "lime"
+        else:
+            self.query_one("#pie").styles.color = "red"
+        self.query_one("#pie").update(str(binary.pie))
+
+        if binary.canary:
+            self.query_one("#canaries").styles.color = "lime"
+        else:
+            self.query_one("#canaries").styles.color = "red"
+        self.query_one("#canaries").update(str(binary.canary))
+
+        if binary.nx:
+            self.query_one("#nx").styles.color = "lime"
+        else:
+            self.query_one("#nx").styles.color = "red"
+        self.query_one("#nx").update(str(binary.nx))
 
 
 class GoalItem(ListItem):
@@ -31,9 +64,12 @@ class GoalItem(ListItem):
 
 
 class Goals(ListView):
-    def __init__(self, goals: list[Goal], *args, **kwargs) -> None:
-        super().__init__(*[GoalItem(goal) for goal in goals], *args, **kwargs)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.border_title = "Found goals"
+
+    def append(self, goal: Goal):
+        super().append(GoalItem(goal))
 
 
 class VulnItem(ListItem):
@@ -61,9 +97,12 @@ class VulnItem(ListItem):
             
 
 class Vulns(ListView):
-    def __init__(self, vulns: list[Vulnerability], *args, **kwargs) -> None:
-        super().__init__(*[VulnItem(vuln) for vuln in vulns], *args, **kwargs)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.border_title = "Found vulnerabilities"
+
+    def append(self, vuln: Vulnerability):
+        super().append(VulnItem(vuln))
 
 
 class Autopwn(App):
@@ -76,8 +115,11 @@ class Autopwn(App):
     def compose(self) -> ComposeResult:
         yield Header()
         with Vertical(id="content"):
-            yield Horizontal(id="info")
-            yield Horizontal(id="exploits")
+            with Horizontal(id="info"):
+                yield SecurityFeatures(id="security")
+            with Horizontal(id="exploits"):
+                yield Goals(id="goals")
+                yield Vulns(id="vulns")
         yield Log(id="log")
         yield Footer()
 
@@ -90,12 +132,14 @@ class Autopwn(App):
         self.query_one("#log").write_line("Loaded!")
 
         self.query_one("#content").border_title = f"Binary: {self.binary.path}"
-        self.query_one("#info").mount(SecurityFeatures(self.binary, id="security"))
+        self.query_one("#security").update_binary(self.binary)
 
         self.query_one("#log").write_line("Finding goals...")
         self.goals = await asyncio.to_thread(lambda: find_goals(self.binary))
-        self.query_one("#exploits").mount(Goals(self.goals, id="goals"))
+        for goal in self.goals:
+            self.query_one("#goals").append(goal)
 
         self.query_one("#log").write_line("Finding vulnerabilities...")
         self.vulns = await asyncio.to_thread(lambda: find_vulns(self.binary, self.goals))
-        self.query_one("#exploits").mount(Vulns(self.vulns, id="vulns"))
+        for vuln in self.vulns:
+            self.query_one("#vulns").append(vuln)

@@ -4,6 +4,13 @@
 
 	#info {
 		height: auto;
+
+		#security {
+			grid-size: 2;
+			grid-columns: 1fr 2fr;
+			width: 35;
+			height: 6;
+		}
 	}
 
 	& > * {
