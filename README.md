@@ -1,6 +1,8 @@
 # Autopwn
 
-(image)
+![Sample usage](
+  assets/usage.png
+)
 
 Autopwn is a tool for automatically exploiting vulnerable binaries.
 It uses [angr](https://github.com/angr/angr/) to solve for inputs and to analyse program states, [radare2](github.com/radareorg/radare2) for disassembly, [pwntools](https://github.com/Gallopsled/pwntools) for executing exploits, and NO AI!!!
