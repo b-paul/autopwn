@@ -4,6 +4,7 @@ from textual.containers import Horizontal, Vertical, Grid
 from textual.widgets import Header, Footer, Log, Label, Markdown, ListView, ListItem, Collapsible
 
 from binary import Binary
+from exploit import exploit, Remote
 from goals import Goal, WinFunction, SystemFunction, find_goals
 from vulns import Vulnerability, StackBufferOverflow, WinFunctionCall, UnconstrainedPrintf, BufferWrite, find_vulns
 
@@ -107,10 +108,13 @@ class Vulns(ListView):
 
 class Autopwn(App):
     CSS_PATH = "autopwn.tcss"
+    BINDINGS = [("l", "load_binary", "Load binary"), ("e", "exploit_binary", "Exploit binary")]
 
-    def __init__(self, args) -> None:
+    def __init__(self, binary_path: str, remote: Remote) -> None:
         super().__init__()
-        self.binary_path = args.path[0]
+        self.binary_path = binary_path
+        self.remote = remote
+        self.ready = False
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -125,6 +129,18 @@ class Autopwn(App):
 
     def on_mount(self) -> None:
         asyncio.create_task(self._load_binary())
+
+    async def action_exploit_binary(self) -> None:
+        self.ready = False
+        self.refresh_bindings()
+        await asyncio.to_thread(lambda: exploit(self.binary, self.goals, self.vulns, self.remote))
+        self.ready = True
+        self.refresh_bindings()
+
+    def check_action(self, action: str, parameters: tuple[object, ...]):
+        if action == "exploit_binary" and not self.ready:
+            return False
+        return True
 
     async def _load_binary(self) -> None:
         self.query_one("#log").write_line("Loading binary...")
@@ -145,3 +161,5 @@ class Autopwn(App):
             self.query_one("#vulns").append(vuln)
 
         self.query_one("#log").write_line("Done!")
+        self.ready = True
+        self.refresh_bindings()

@@ -31,7 +31,7 @@ def main():
         remote = Remote(parts[0], port)
 
     if args.interactive:
-        app = Autopwn(args)
+        app = Autopwn(args.path[0], remote)
         app.run()
     else:
         binary = Binary(args.path[0])
