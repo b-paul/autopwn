@@ -57,7 +57,7 @@ def find_gets_vulns(bin: Binary) -> list[Vulnerability]:
 
     ret = []
 
-    state = bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile)
+    state = bin.angr.factory.full_init_state(add_options=options, stdin=angr.SimFile)
 
     for crossref, found in bin.crossref_states("sym.imp.gets", state):
         rdi = found.solver.eval(found.regs.rdi, cast_to=int)
@@ -80,7 +80,7 @@ def find_fgets_vulns(bin: Binary) -> list[Vulnerability]:
 
     options = angr.options.unicorn
     options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
-    state = bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile)
+    state = bin.angr.factory.full_init_state(add_options=options, stdin=angr.SimFile)
 
     def constraint(state):
         rip_offset = state.regs.rbp - state.regs.rdi + 8
@@ -108,7 +108,7 @@ def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
         if isinstance(goal, WinFunction):
             for crossref, found in bin.crossref_states(
                 goal.addr,
-                bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile),
+                bin.angr.factory.full_init_state(add_options=options, stdin=angr.SimFile),
             ):
                 ret.append(WinFunctionCall(goal.name, goal.addr, found))
 
@@ -118,9 +118,15 @@ def find_win_vulns(bin: Binary, goals: list[Goal]) -> list[Vulnerability]:
 def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
     ret = []
 
+    base_state = bin.angr.factory.full_init_state(add_options=options, stdin=angr.SimFile)
+    # This is required to avoid our 'reaching the printf' input from causing buffer
+    # overflows. Ideally we'd just be able to tell it to minimise the length of the
+    # input buffer, but we can't. We just guess that most 'gets' calls point to buffers
+    # at least 50 bytes in size.
+    base_state.libc.max_gets_size = 50
     crossrefs = bin.crossref_states(
         "sym.imp.printf",
-        bin.angr.factory.entry_state(add_options=options, stdin=angr.SimFile)
+        base_state
     )
     for crossref, state in crossrefs:
         rdi = state.solver.eval(state.regs.rdi, cast_to=int)
@@ -135,6 +141,11 @@ def find_printf_vulns(bin: Binary) -> list[Vulnerability]:
         is_user_controlled = state.solver.satisfiable(
             extra_constraints=[state.memory.load(rdi, 1) != first_byte]
         )
+
+        # Revert to default so that we can still test overflows after running the
+        # leak.
+        state.libc.max_gets_size = 256
+
         if is_user_controlled:
             ret.append(UnconstrainedPrintf(crossref["from"], state))
 

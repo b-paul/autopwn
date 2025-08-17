@@ -13,8 +13,6 @@ class Binary:
     def __init__(self, path: str):
         self.path = path
 
-        self.loader = cle.Loader(path)
-
         self.elf = ELF(path, checksec=False)
         context.binary = self.elf
 
@@ -29,7 +27,12 @@ class Binary:
         self.r2.cmd("aaa")
         self.afl = json.loads(self.r2.cmd("aflj"))
 
-        self.angr = angr.Project(path, auto_load_libs=False)
+        opts = {}
+        if self.pie:
+            opts = {"base_addr": 0}
+            self.elf.address = 0
+        self.loader = cle.Loader(path, main_opts=opts)
+        self.angr = angr.Project(path, auto_load_libs=False, main_opts=opts)
 
     def crossrefs(self, symbol: int):
         return json.loads(self.r2.cmd(f"axtj {symbol}"))

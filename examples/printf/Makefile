@@ -1,3 +1,3 @@
 all:
-	gcc -no-pie -fstack-protector main.c -o main
+	gcc -pie -fPIE -fstack-protector main.c -o main
 
